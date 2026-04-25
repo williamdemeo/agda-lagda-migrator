@@ -41,5 +41,15 @@ contain `@@` safely.
 from .macros import MacroEntry, MacroTable
 from .preprocess import preprocess
 from .postprocess import postprocess, build_label_map
+from .core import ConversionError, convert_file, convert_tree
 
-__all__ = ["MacroEntry", "MacroTable", "preprocess", "postprocess", "build_label_map"]
+__all__ = [
+    "ConversionError",
+    "MacroEntry",
+    "MacroTable",
+    "build_label_map",
+    "convert_file",
+    "convert_tree",
+    "postprocess",
+    "preprocess",
+]
