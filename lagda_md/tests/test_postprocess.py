@@ -117,7 +117,7 @@ class TestCrossRefsFlag:
             intermediate, {}, label_map={}, enable_cross_refs=True
         )
         assert "unresolved reference" in result
-        assert any("Unresolved" in r.message for r in caplog.records)
+        assert any("Unresolved" in r.getMessage() for r in caplog.records)
 
     def test_multiple_targets_joined_with_and(self):
         intermediate = "See @@CROSS_REF@@command=Cref@@targets=a,b@@."
@@ -297,3 +297,25 @@ class TestAgdaAlgebrasShape:
         assert "```agda" in result
         for marker in ("@@CROSS_REF@@", "@@THEOREM_BLOCK@@", "@@FIGURE_BLOCK"):
             assert marker not in result
+
+class TestLuaFilterEscapeRoundTrip:
+    """The agda-filter.lua filter must unescape @ @ back to @@ in payloads.
+
+    These tests verify the *parsing* of payloads with escaped @-characters
+    inside values; the actual Lua filter is exercised end-to-end only when
+    Pandoc is invoked.  Here we confirm that preprocess emits a payload
+    that the new parsing strategy can recover correctly.
+    """
+
+    def test_at_at_in_basename_survives_escape_through_preprocess(self):
+        # The preprocessor escapes @@ -> @ @ inside placeholder values, so a
+        # macro basename containing literal @@ produces a payload with @ @
+        # inside the basename field but plain @@ as the field separators.
+        # This regressed under the old Lua parser because [^@]+ truncated
+        # at the first single @.
+        text, _ = preprocess(r"\AgdaModule{Foo@@Bar}")
+        assert "@@AgdaTerm@@basename=Foo@ @Bar@@class=AgdaModule@@" in text
+        # Field separator: every @@ that's part of the placeholder grammar.
+        # Escaped value:    every @ @ that was once an @@ in user content.
+        # The Lua filter must distinguish them; if it doesn't, the basename
+        # truncates to "Foo" and we lose data.

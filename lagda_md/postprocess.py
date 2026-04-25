@@ -29,6 +29,7 @@ from typing import Callable, Mapping
 
 __all__ = ["postprocess", "build_label_map"]
 
+logger = logging.getLogger(__name__)
 
 def _unescape_from_placeholder(text: str) -> str:
     """Reverse the @@ → @ @ escape applied by lagda_md.preprocess."""
@@ -138,7 +139,7 @@ def _format_cross_ref_links(
         target = label_map.get(label_id)
         if target is None:
             parts.append(f"*'{label_id}' (unresolved reference)*")
-            logging.warning("Unresolved cross-reference: %r", label_id)
+            logger.warning("Unresolved cross-reference: %r", label_id)
             continue
 
         caption = target.get("caption_text", label_id)
@@ -150,7 +151,7 @@ def _format_cross_ref_links(
             parts.append(f"Section [{display}]({target_file}{anchor})")
         else:
             parts.append(f"*Section {display} (link generation error)*")
-            logging.warning(
+            logger.warning(
                 "Cross-reference %r resolved but missing file/anchor", label_id
             )
 
