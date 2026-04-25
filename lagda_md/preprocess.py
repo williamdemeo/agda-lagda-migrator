@@ -40,6 +40,14 @@ _GENERIC_AGDA_PATTERN = re.compile(
     r"\\(" + "|".join(_GENERIC_AGDA_CLASSES) + r")\{([^}]+)\}"
 )
 
+def _escape_for_placeholder(text: str) -> str:
+    """Escape @@ for safe embedding in a placeholder payload.
+
+    Placeholder values use @@ as a field separator, so any @@ in the user-
+    controlled value would corrupt parsing.  We replace it with @ @ (with a
+    space); postprocess.py reverses the escape when pulling values out.
+    """
+    return text.replace("@@", "@ @")
 
 def preprocess(
     content: str,
@@ -103,21 +111,31 @@ def preprocess(
         flags=re.DOTALL,
     )
 
-    # --- Stage 2: Always-on text transformations --------------------------
+    # --- Stage 2: Always-on text transformations (order matters) ----------
+    # ~ normalization runs first; it's purely orthogonal.
     processed = processed.replace("~", " ")
-    processed = re.sub(r"\\ab\{(.*?)\}", r"\\AgdaBound{\1}", processed)
 
-    # --- Stage 3: Project-supplied macros ---------------------------------
+    # --- Stage 3: Project-supplied macros (highest precedence) ------------
+    # User-supplied entries get to override built-in shorthands like \ab,
+    # so this stage runs before the shorthand-expansion stage below.
     if macros.entries:
         processed = _expand_custom_macros(processed, macros)
 
-    # --- Stage 4: Generic Agda CSS-class macros ---------------------------
+    # --- Stage 4: Hardcoded shorthands (default fallbacks) ----------------
+    # Any \ab{...} that wasn't matched by a user-supplied table entry above
+    # falls through to the default shorthand expansion.
+    processed = re.sub(r"\\ab\{(.*?)\}", r"\\AgdaBound{\1}", processed)
+
+    # --- Stage 5: Generic Agda CSS-class macros ---------------------------
     processed = _GENERIC_AGDA_PATTERN.sub(
-        lambda m: f"\\texttt{{@@AgdaTerm@@basename={m.group(2)}@@class={m.group(1)}@@}}",
+        lambda m: (
+            f"\\texttt{{@@AgdaTerm@@basename="
+            f"{_escape_for_placeholder(m.group(2))}@@class={m.group(1)}@@}}"
+        ),
         processed,
     )
 
-    # --- Stage 5: Opt-in transformations ----------------------------------
+    # --- Stage 6: Opt-in transformations ----------------------------------
     if enable_cross_refs:
         processed = _process_cross_refs(processed)
     if enable_theorem_envs:
@@ -146,7 +164,10 @@ def _expand_custom_macros(content: str, macros: MacroTable) -> str:
         name, arg = match.group(1), match.group(2)
         entry = macros[name]
         basename = entry.basename if entry.basename else arg
-        return f"\\texttt{{@@AgdaTerm@@basename={basename}@@class={entry.agda_class}@@}}"
+        return (
+            f"\\texttt{{@@AgdaTerm@@basename={_escape_for_placeholder(basename)}"
+            f"@@class={entry.agda_class}@@}}"
+        )
 
     return pattern.sub(_replace, content)
 
@@ -161,8 +182,8 @@ def _process_cross_refs(content: str) -> str:
     """Rewrite \\Cref / \\cref → @@CROSS_REF@@ placeholders for postprocess."""
     return _CREF_PATTERN.sub(
         lambda m: (
-            f"@@CROSS_REF@@command={m.group(1)}"
-            f"@@targets={m.group(2).replace('@@', '@ @')}@@"
+            f"@@CROSS_REF@@command={_escape_for_placeholder(m.group(1))}"
+            f"@@targets={_escape_for_placeholder(m.group(2))}@@"
         ),
         content,
     )
@@ -187,10 +208,12 @@ def _process_theorem_envs(content: str) -> str:
 
 def _make_theorem_replacer(kind: str):
     def _replace(match: re.Match) -> str:
-        title = match.group(1) or kind.capitalize()
+        title = _escape_for_placeholder(match.group(1) or kind.capitalize())
         body = match.group(2)
         label_match = re.search(r"\\label\{(.*?)\}", body)
-        label = label_match.group(1) if label_match else ""
+        label = (
+            _escape_for_placeholder(label_match.group(1)) if label_match else ""
+        )
         body = re.sub(r"\\label\{.*?\}", "", body).strip()
         spec = (
             f"label={label}@@title={title}" if label else f"title={title}"
@@ -222,12 +245,12 @@ def _replace_figure(match: re.Match) -> str:
     if caption_match:
         raw_caption = caption_match.group(1).strip()
         squashed = re.sub(r"\s+", " ", raw_caption.replace("\n", " ")).strip()
-        caption_text = squashed.replace(" ", "-").replace("@@", "@ @")
+        caption_text = _escape_for_placeholder(squashed.replace(" ", "-"))
         body = body.replace(caption_match.group(0), "", 1)
 
     label_match = re.search(r"\\label\{(.*?)\}", body)
     if label_match:
-        label_id = label_match.group(1).strip().replace("@@", "@ @")
+        label_id = _escape_for_placeholder(label_match.group(1).strip())
         body = body.replace(label_match.group(0), "", 1)
 
     body = body.strip()
