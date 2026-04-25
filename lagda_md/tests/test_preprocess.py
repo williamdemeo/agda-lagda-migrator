@@ -118,6 +118,24 @@ class TestCustomMacros:
         assert "basename=specificFunc@@class=AgdaFunction" in text
 
 
+class TestCustomMacroPrecedenceOverShorthand:
+    def test_custom_ab_overrides_builtin_shorthand(self):
+        macros = MacroTable(
+            entries={
+                "ab": MacroEntry(basename="", agda_class="AgdaArgument"),
+            }
+        )
+        text, _blocks = preprocess("Let \\ab{x} be a binding.", macros)
+        # The custom entry's class wins over the hardcoded \ab → \AgdaBound rule.
+        assert "basename=x@@class=AgdaArgument" in text
+        assert "AgdaBound" not in text
+
+    def test_default_ab_shorthand_applies_when_no_custom_table(self):
+        text, _blocks = preprocess("Let \\ab{x} be a binding.")
+        # No custom entry; hardcoded shorthand fires.
+        assert "basename=x@@class=AgdaBound" in text
+
+
 # ---------------------------------------------------------------------------
 # Opt-in flags
 # ---------------------------------------------------------------------------

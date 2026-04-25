@@ -88,3 +88,12 @@ class TestMacroTableLoading:
         )
         merged = a.merge(b)
         assert merged["X"].basename == "new"
+
+    def test_from_dict_non_mapping_entry_is_rejected(self):
+        raw = {
+            "agda_terms": {
+                "AgdaModule": "not a dict",
+            }
+        }
+        with pytest.raises(ValueError, match="invalid entry for macro"):
+            MacroTable.from_dict(raw)
