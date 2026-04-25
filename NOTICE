@@ -1,0 +1,10 @@
+agda-lagda-migrator
+Copyright 2024-2026 Input Output (IOHK) Ltd.
+Copyright 2026 William DeMeo.
+
+This product includes software developed for the Cardano formal ledger
+specifications project (https://github.com/IntersectMBO/formal-ledger-specifications)
+extracted from commit 534652f22802118b2f8e9f6beae69084d91453d3, specifically
+the build-tools/scripts/md/ subdirectory at commit f6e177f5.
+
+The software is licensed under the Apache License, Version 2.0; see LICENSE.
