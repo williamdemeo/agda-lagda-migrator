@@ -1,0 +1,12 @@
+{
+  "agda_terms": {
+    "ab": {
+      "basename": "",
+      "agda_class": "AgdaBound"
+    },
+    "hrefAgdaDocs": {
+      "basename": "Agda documentation",
+      "agda_class": "AgdaModule"
+    }
+  }
+}
