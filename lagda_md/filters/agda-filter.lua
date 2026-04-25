@@ -17,10 +17,25 @@
 --  @return table mapping keys to values.
 local function parse_agda_term_payload(text)
   local args = {}
-  for key, value in string.gmatch(text, "([^=@]+)=([^@]+)") do
-    key = key:match("^%s*(.-)%s*$")
-    value = value:match("^%s*(.-)%s*$")
-    args[key] = value
+  -- Split on @@ field separator.  Preserves single @ characters
+  -- (which arise from the @@ → @ @ escape applied by preprocess).
+  local position = 1
+  while position <= #text do
+    local separator_start, separator_end = text:find("@@", position, true)
+    local field
+    if separator_start then
+      field = text:sub(position, separator_start - 1)
+      position = separator_end + 1
+    else
+      field = text:sub(position)
+      position = #text + 1
+    end
+    local key, value = field:match("^([^=]+)=(.*)$")
+    if key then
+      key = key:match("^%s*(.-)%s*$")
+      value = value:match("^%s*(.-)%s*$")
+      args[key] = value
+    end
   end
   return args
 end
