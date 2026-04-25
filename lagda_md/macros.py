@@ -98,11 +98,16 @@ class MacroTable:
                 f'"agda_class": ...}}}}}}'
             )
 
-        entries = {
-            name: MacroEntry.from_dict(spec)
-            for name, spec in payload.items()
-            if isinstance(spec, Mapping)
-        }
+        origin = f" in {source}" if source else ""
+        entries = {}
+        for name, spec in payload.items():
+            if not isinstance(spec, Mapping):
+                raise ValueError(
+                    f"Macro table{origin} has invalid entry for macro {name!r}: "
+                    f"expected a mapping with `basename` and `agda_class`, "
+                    f"got {type(spec).__name__}"
+                )
+            entries[name] = MacroEntry.from_dict(spec)
         return cls(entries=entries)
 
     @classmethod

@@ -16,7 +16,6 @@ is documented in `lagda_md/__init__.py`.
 from __future__ import annotations
 
 import re
-from typing import Mapping
 
 from .macros import MacroTable
 
