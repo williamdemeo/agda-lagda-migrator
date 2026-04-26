@@ -1,5 +1,8 @@
 # agda-lagda-migrator
 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+
 A Python package and command-line tool for converting LaTeX-literate Agda (`.lagda`) files into Markdown-literate Agda (`.lagda.md`) files.
 
 This is the form a growing number of Agda projects are migrating toward — [1Lab](https://1lab.dev), [agda-categories](https://github.com/agda/agda-categories), [agda-algebras](https://github.com/ualib/agda-algebras), and others — because `.lagda.md` files render directly on GitHub, work cleanly with MkDocs and Jekyll, and serve as higher-quality training corpora for language models than either pure `.agda` or pure `.lagda` form.
@@ -29,7 +32,7 @@ For a `.lagda` file authored as **LaTeX prose with `\begin{code}` fences for Agd
 For converting a whole tree:
 
 ```sh
-./convert_lagda.py --input-format markdown --in-tree docs/lagda --out-tree src
+./convert_lagda.py --input-format markdown --in-tree PATH/TO/SOURCES --out-tree PATH/TO/OUTPUTS
 ```
 
 ## Why this exists
@@ -57,7 +60,7 @@ For **Markdown-literate input** (`--input-format markdown`):
 .lagda  →  extract code blocks  →  apply macros  →  restore code blocks  →  .lagda.md
 ```
 
-The prose is already in the target format. Pandoc is bypassed entirely. YAML front matter, headings, reference-style links, and Jekyll directives all survive byte-for-byte.
+The prose is already in the target format, so Pandoc is bypassed entirely. YAML front matter, Markdown headings, reference-style links, and Jekyll directives are passed through unchanged; only `\begin{code}` blocks are rewritten as fenced `\`\`\`agda` blocks, and any macros from the supplied table are expanded inline.
 
 For **LaTeX-literate input** (the default):
 
@@ -89,7 +92,7 @@ The package ships with a small default table (`lagda_md/macros/default.json`) co
 
 This package was extracted from the [IntersectMBO formal-ledger-specifications](https://github.com/IntersectMBO/formal-ledger-specifications) project at commit `f6e177f5`, where the four-stage LaTeX pipeline was used to migrate the entire Cardano formal ledger specification corpus from `.lagda` to `.lagda.md`. That work is preserved as a worked example at `examples/fls-pipeline/`.
 
-The Markdown-literate pipeline is validated against the [agda-algebras](https://github.com/ualib/agda-algebras) corpus (127 files, mostly authored in Markdown-with-LaTeX-fences form). See `docs/corpora/agda-algebras.md` for the project-specific macro table and migration notes.
+The Markdown-literate pipeline is being validated against the [agda-algebras](https://github.com/ualib/agda-algebras) corpus (127 files, all authored in Markdown-with-LaTeX-fences form) as a second-corpus check.  See [issue #6](https://github.com/williamdemeo/agda-lagda-migrator/issues/6) for the validation work in progress.
 
 ## Available transformations
 
@@ -134,12 +137,9 @@ agda-lagda-migrator/
 │   ├── filters/
 │   │   ├── agda-filter.lua     # Default Pandoc Lua filter
 │   │   └── cross-refs.lua      # Optional cross-ref Lua filter
-│   └── tests/                  # 100 pytest cases
+│   └── tests/                  # pytest test suite
 ├── examples/
 │   └── fls-pipeline/           # The full FLS pipeline as a worked example
-├── docs/
-│   └── corpora/
-│       └── agda-algebras.md    # Validation against the second corpus
 └── README.md
 ```
 
