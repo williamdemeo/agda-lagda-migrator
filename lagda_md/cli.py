@@ -19,7 +19,15 @@ __all__ = ["main"]
 def main(argv: list[str] | None = None) -> int:
     """Parse arguments and dispatch to the appropriate conversion mode.
 
-    Returns 0 on success, 1 on usage errors, 2 on conversion failures.
+    Return values:
+        0: success.
+        1: argument-validation failure (e.g., --in-tree without --out-tree).
+        2: conversion failure (e.g., Pandoc returned a nonzero exit code).
+
+    `argparse` parser errors (unknown flags, invalid values) raise
+    `SystemExit(2)` per the standard library convention, bypassing this
+    return-code path; callers wishing to recover from parse errors must
+    catch `SystemExit` explicitly.
     """
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -35,6 +43,13 @@ def main(argv: list[str] | None = None) -> int:
     extra_filters = [Path(f) for f in args.extra_filter or ()]
 
     if args.in_tree:
+        if args.check:
+            print(
+                "error: --check is currently single-file-only; "
+                "use --check on individual files instead of with --in-tree",
+                file=sys.stderr,
+            )
+            return 1
         if args.out_tree is None:
             print("error: --in-tree requires --out-tree", file=sys.stderr)
             return 1
