@@ -226,6 +226,14 @@ class TestFigureEnvsFlag:
         text, _blocks = preprocess(content, enable_figure_envs=True)
         assert "@@UNLABELLED_FIGURE_CAPTION@@" in text
 
+class TestNonBreakingSpaceFlag:
+    def test_normalize_tildes_default_is_true(self):
+        text, _blocks = preprocess("a~b")
+        assert text == "a b"
+
+    def test_normalize_tildes_false_preserves(self):
+        text, _blocks = preprocess("a~b", normalize_tildes=False)
+        assert text == "a~b"
 
 # ---------------------------------------------------------------------------
 # agda-algebras smoke test
