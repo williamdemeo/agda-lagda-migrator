@@ -21,6 +21,7 @@ from pathlib import Path
 from .macros import MacroTable
 from .postprocess import build_label_map, postprocess
 from .preprocess import preprocess
+from .markdown_pipeline import convert_markdown
 
 __all__ = ["ConversionError", "convert_file", "convert_tree"]
 
@@ -60,6 +61,7 @@ def convert_file(
     input_path: Path,
     output_path: Path,
     *,
+    input_format: str = "latex",
     macros: MacroTable | None = None,
     enable_cross_refs: bool = False,
     enable_theorem_envs: bool = False,
@@ -75,6 +77,11 @@ def convert_file(
         input_path: Path to the .lagda source.
         output_path: Path where the .lagda.md result is written.  Parent
             directories are created if they don't exist.
+        input_format: Either "latex" (default) or "markdown".  Determines
+            which pipeline to dispatch to.  "latex" runs the four-stage
+            Pandoc-based pipeline.  "markdown" skips Pandoc and treats
+            the prose as already-Markdown, only handling code-block
+            extraction / restoration and macro expansion.
         macros: Optional macro table.  Defaults to the package's default table.
         enable_cross_refs: If True, resolve \\Cref / \\cref using label_map.
         enable_theorem_envs: If True, restore theorem/lemma/claim placeholders.
@@ -90,10 +97,60 @@ def convert_file(
         ConversionError: If any stage of the pipeline fails.
         FileNotFoundError: If `input_path` doesn't exist.
         ValueError: If enable_cross_refs=True but label_map=None.
+            Also raised if input_format is "markdown" with any opt-in
+            flag set; opt-in flags are LaTeX-pipeline-specific and don't
+            apply to Markdown input.
     """
+    if input_format not in ("latex", "markdown"):
+        raise ValueError(
+            f"input_format must be 'latex' or 'markdown', got {input_format!r}"
+        )
+
+    if input_format == "markdown":
+        if enable_cross_refs or enable_theorem_envs or enable_figure_envs:
+            raise ValueError(
+                "opt-in transformations (--enable-cross-refs, "
+                "--enable-theorem-envs, --enable-figure-envs) apply only "
+                "to --input-format latex; Markdown-literate sources use "
+                "Markdown-native mechanisms for cross-references, "
+                "theorems, and figures"
+            )
+        return convert_markdown(input_path, output_path, macros=macros)
+
+    # Below: input_format == "latex" — the original pipeline, unchanged.
     if macros is None:
         macros = MacroTable.default()
 
+    return _convert_file_latex(
+        input_path,
+        output_path,
+        macros=macros,
+        enable_cross_refs=enable_cross_refs,
+        enable_theorem_envs=enable_theorem_envs,
+        enable_figure_envs=enable_figure_envs,
+        label_map=label_map,
+        extra_lua_filters=extra_lua_filters,
+        pandoc=pandoc,
+        keep_temp=keep_temp,
+    )
+
+
+def _convert_file_latex(
+    input_path: Path,
+    output_path: Path,
+    *,
+    macros: MacroTable,
+    enable_cross_refs: bool = False,
+    enable_theorem_envs: bool = False,
+    enable_figure_envs: bool = False,
+    label_map: Mapping[str, Mapping[str, str]] | None = None,
+    extra_lua_filters: Iterable[Path] = (),
+    pandoc: str = "pandoc",
+    keep_temp: bool = False,
+) -> None:
+    """The original four-stage pipeline.  Kept as a private helper called
+    only by convert_file when input_format='latex'.
+    """
     if not input_path.exists():
         raise FileNotFoundError(f"input file does not exist: {input_path}")
     if enable_cross_refs and label_map is None:
@@ -126,6 +183,7 @@ def convert_tree(
     *,
     in_root: Path,
     out_root: Path,
+    input_format: str = "latex",
     macros: MacroTable | None = None,
     enable_cross_refs: bool = False,
     enable_theorem_envs: bool = False,
@@ -148,6 +206,8 @@ def convert_tree(
             compute output paths and label map keys.
         out_root: The directory under which output paths are written.
             Mirrors the input tree.
+        input_format: Either "latex" or "markdown"; forwarded to
+            convert_file for each input.
         Other args: forwarded to `convert_file`.
 
     Returns:
@@ -161,7 +221,7 @@ def convert_tree(
 
     # First pass for cross-refs: preprocess every file, collect outputs.
     label_map: dict[str, dict[str, str]] = {}
-    if enable_cross_refs:
+    if enable_cross_refs and input_format == "latex":
         logger.info("first pass: building cross-reference label map")
         preprocessed: dict[Path, str] = {}
         for src in inputs:
@@ -190,6 +250,7 @@ def convert_tree(
             convert_file(
                 src,
                 dst,
+                input_format=input_format,
                 macros=macros,
                 enable_cross_refs=enable_cross_refs,
                 enable_theorem_envs=enable_theorem_envs,

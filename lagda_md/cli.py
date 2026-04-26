@@ -76,6 +76,7 @@ def _run_single_mode(
         convert_file(
             args.input,
             args.output,
+            input_format=args.input_format,
             macros=macros,
             enable_cross_refs=args.enable_cross_refs,
             enable_theorem_envs=args.enable_theorem_envs,
@@ -124,6 +125,7 @@ def _run_tree_mode(
         inputs,
         in_root=in_root,
         out_root=out_root,
+        input_format=args.input_format,
         macros=macros,
         enable_cross_refs=args.enable_cross_refs,
         enable_theorem_envs=args.enable_theorem_envs,
@@ -155,6 +157,7 @@ def _run_check_mode(
             convert_file(
                 args.input,
                 scratch_output,
+                input_format=args.input_format,
                 macros=macros,
                 enable_cross_refs=False,
                 enable_theorem_envs=args.enable_theorem_envs,
@@ -216,6 +219,20 @@ def _build_parser() -> argparse.ArgumentParser:
         "--check",
         action="store_true",
         help="Run conversion without writing output; exit 0 on success.",
+    )
+
+    formats = parser.add_argument_group("input format")
+    formats.add_argument(
+        "--input-format",
+        choices=["latex", "markdown"],
+        default="latex",
+        metavar="FORMAT",
+        help=(
+            "Input file flavor.  'latex' (default) treats the .lagda "
+            "file as LaTeX-literate Agda and runs through Pandoc.  "
+            "'markdown' treats it as Markdown-literate Agda with "
+            "\\begin{code} fences and skips Pandoc."
+        ),
     )
 
     customization = parser.add_argument_group("customization")
