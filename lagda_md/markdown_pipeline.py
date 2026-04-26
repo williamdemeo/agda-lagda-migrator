@@ -49,8 +49,10 @@ def convert_markdown(
         output_path: Path where the .lagda.md result is written.
             Parent directories are created if absent.
         macros: Optional macro table.  Defaults to the package's
-            default table; pass an empty `MacroTable.empty()` to
-            disable all macro expansion.
+            default table.  Pass `MacroTable.empty()` to disable
+            *custom* macro expansion; the built-in preprocessor
+            transformations (`\\ab` shorthand, generic `\\Agda...`
+            class expansion, `~` normalization) always apply.
 
     Raises:
         FileNotFoundError: If `input_path` doesn't exist.
@@ -66,9 +68,12 @@ def convert_markdown(
 
     # Stage 1: Extract code blocks and expand macros.  Opt-in flags are
     # all False — none of them are meaningful for Markdown-literate input.
+    # Tilde normalization is also disabled: in Markdown-literate prose,
+    # ~ has its own meanings (strikethrough ~~text~~, YAML null `key: ~`).
     intermediate, code_blocks = preprocess(
         content,
         macros=macros,
+        normalize_tildes=False,
         enable_cross_refs=False,
         enable_theorem_envs=False,
         enable_figure_envs=False,

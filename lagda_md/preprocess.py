@@ -53,6 +53,7 @@ def preprocess(
     content: str,
     macros: MacroTable | None = None,
     *,
+    normalize_tildes: bool = True,
     enable_cross_refs: bool = False,
     enable_theorem_envs: bool = False,
     enable_figure_envs: bool = False,
@@ -60,14 +61,22 @@ def preprocess(
     """Transform LaTeX-literate Agda content into Pandoc-ready text.
 
     Always-on transformations:
-      * Code-block extraction (\\begin{code}...\\end{code} → @@CODEBLOCK_ID_n@@).
+      * Code-block extraction (\\begin{code}...\\end{code} → @@CODEBLOCK_ID_n@@),
+        including the [hide] variant for code that is type-checked but not
+        rendered.
       * Hidden code blocks (\\begin{code}[hide]...).
       * \\ab{x} → \\AgdaBound{x} shorthand expansion.
-      * ~ (LaTeX non-breaking space) → ' '.
+      * ~ (LaTeX non-breaking space) → ' ', if normalize_tildes is True.
       * Generic \\Agda...{name} expansion to AgdaTerm placeholders, for the
         nine standard Agda CSS classes listed in _GENERIC_AGDA_CLASSES.
       * Custom macros from the supplied MacroTable, also rendered as
         AgdaTerm placeholders.
+
+    Args:
+        normalize_tildes: When True (the default), `~` is rewritten as a
+            space.  Set to False for Markdown-literate input where `~`
+            has its own meaning (strikethrough, YAML null, etc.).
+        ...
 
     Opt-in transformations (each gated by the corresponding flag and emitting
     placeholders that lagda_md.postprocess knows how to resolve):
@@ -112,8 +121,11 @@ def preprocess(
     )
 
     # --- Stage 2: Always-on text transformations (order matters) ----------
-    # ~ normalization runs first; it's purely orthogonal.
-    processed = processed.replace("~", " ")
+    # ~ normalization runs first; it's purely orthogonal but only
+    # appropriate for LaTeX-literate input.  Markdown-literate input
+    # has its own meaning for ~ (strikethrough, YAML null) and disables it.
+    if normalize_tildes:
+        processed = processed.replace("~", " ")
 
     # --- Stage 3: Project-supplied macros (highest precedence) ------------
     # User-supplied entries get to override built-in shorthands like \ab,

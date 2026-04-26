@@ -268,3 +268,28 @@ class TestAgdaAlgebrasShape:
         # Hidden code block restored as commented Agda block.
         assert "<!--" in result
         assert "module Demos.GeneralOperationsAndRelations where" in result
+
+class TestTildePreservation:
+    def test_yaml_null_with_tilde_preserved(self, tmp_path: Path):
+        src = tmp_path / "Foo.lagda"
+        dst = tmp_path / "Foo.lagda.md"
+        src.write_text(
+            "---\n"
+            "layout: default\n"
+            "subtitle: ~\n"
+            "---\n"
+            "\n"
+            "Body.\n",
+            encoding="utf-8",
+        )
+        convert_markdown(src, dst)
+        result = dst.read_text(encoding="utf-8")
+        assert "subtitle: ~" in result
+
+    def test_markdown_strikethrough_preserved(self, tmp_path: Path):
+        src = tmp_path / "Foo.lagda"
+        dst = tmp_path / "Foo.lagda.md"
+        src.write_text("This is ~~deprecated~~ text.\n", encoding="utf-8")
+        convert_markdown(src, dst)
+        result = dst.read_text(encoding="utf-8")
+        assert "~~deprecated~~" in result
