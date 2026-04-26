@@ -24,24 +24,26 @@ from lagda_md.core import ConversionError, convert_file, convert_tree
 # ---------------------------------------------------------------------------
 @pytest.fixture
 def fake_pandoc(tmp_path: Path) -> Path:
-    """A no-op Pandoc replacement that copies its --output's matching input."""
-    fake = tmp_path / "fake_pandoc.sh"
+    """A no-op Pandoc replacement that copies its --output's matching input.
+
+    Implemented as a Python script for portability across macOS, Linux, and
+    Windows; argparse handles flag parsing without bash-array gymnastics.
+    """
+    fake = tmp_path / "fake_pandoc.py"
     fake.write_text(
-        "#!/usr/bin/env bash\n"
-        "# Argument-parsing pandoc stand-in.  Reads -o for the output path,\n"
-        "# treats the last positional arg as the input.\n"
-        "out=\"\"\n"
-        "args=()\n"
-        "while [[ $# -gt 0 ]]; do\n"
-        "  case \"$1\" in\n"
-        "    -o) out=\"$2\"; shift 2 ;;\n"
-        "    --lua-filter) shift 2 ;;\n"
-        "    -f|-t) shift 2 ;;\n"
-        "    *) args+=(\"$1\"); shift ;;\n"
-        "  esac\n"
-        "done\n"
-        "in=\"${args[-1]}\"\n"
-        "cp \"$in\" \"$out\"\n",
+        "#!/usr/bin/env python3\n"
+        "import argparse\n"
+        "import shutil\n"
+        "import sys\n"
+        "\n"
+        "parser = argparse.ArgumentParser()\n"
+        "parser.add_argument('-o', '--output', required=True)\n"
+        "parser.add_argument('--lua-filter', action='append', default=[])\n"
+        "parser.add_argument('-f', '--from')\n"
+        "parser.add_argument('-t', '--to')\n"
+        "parser.add_argument('input')\n"
+        "args = parser.parse_args()\n"
+        "shutil.copyfile(args.input, args.output)\n",
         encoding="utf-8",
     )
     fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
@@ -138,6 +140,8 @@ class TestConvertTree:
     def test_collects_failures_without_aborting(
         self, tmp_path: Path, fake_pandoc: Path
     ):
+        if not hasattr(os, "geteuid"):
+            pytest.skip("test relies on POSIX uid; not available on this platform")
         in_root = tmp_path / "in"
         out_root = tmp_path / "out"
         in_root.mkdir()
@@ -146,8 +150,7 @@ class TestConvertTree:
         )
 
         # Simulate a per-file failure by making the output path's parent
-        # un-writable.  (Skip the test if running as root, where chmod
-        # has no effect.)
+        # un-writable.
         if os.geteuid() == 0:
             pytest.skip("test relies on filesystem permissions; running as root")
         out_root.mkdir(mode=0o555)
