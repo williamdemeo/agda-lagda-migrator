@@ -42,6 +42,7 @@ from .macros import MacroEntry, MacroTable
 from .preprocess import preprocess
 from .postprocess import postprocess, build_label_map
 from .core import ConversionError, convert_file, convert_tree
+from .markdown_pipeline import convert_markdown
 
 __all__ = [
     "ConversionError",
@@ -49,6 +50,7 @@ __all__ = [
     "MacroTable",
     "build_label_map",
     "convert_file",
+    "convert_markdown",
     "convert_tree",
     "postprocess",
     "preprocess",
