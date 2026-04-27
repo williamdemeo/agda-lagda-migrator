@@ -104,12 +104,36 @@ class TestConvertMarkdown:
         )
         convert_markdown(src, dst, macros=macros)
         result = dst.read_text(encoding="utf-8")
-        assert "Subalgebras" in result
-        # The custom-macro expansion produces a placeholder which Pandoc
-        # would normally consume; in the Markdown pipeline there is no
-        # Pandoc, so the AgdaTerm placeholder appears as raw text.  The
-        # downstream MkDocs / Jekyll site is expected to handle these.
-        assert "@@AgdaTerm@@basename=Subalgebras@@class=AgdaFunction@@" in result
+        # AgdaTerm placeholders are resolved to kramdown attribute spans
+        # — the format Jekyll's kramdown processor styles via CSS class.
+        # Pair with a custom.css providing the per-class rules.
+        assert "`Subalgebras`{.AgdaFunction}" in result
+        # No placeholder string survives the resolution step.
+        assert "@@AgdaTerm@@" not in result
+
+    def test_href_rewritten_to_markdown_link(self, tmp_path: Path):
+        src = tmp_path / "Foo.lagda"
+        dst = tmp_path / "Foo.lagda.md"
+        src.write_text(
+            "See the \\href{https://example.com}{example site} for more.\n",
+            encoding="utf-8",
+        )
+        convert_markdown(src, dst)
+        result = dst.read_text(encoding="utf-8")
+        assert "[example site](https://example.com)" in result
+        assert "\\href" not in result
+
+    def test_ab_shorthand_renders_as_kramdown_span(self, tmp_path: Path):
+        # \ab{x} → \AgdaBound{x} via the always-on shorthand fallback,
+        # then the generic \Agda... → AgdaTerm placeholder, then this
+        # PR's resolution to a kramdown span.
+        src = tmp_path / "Foo.lagda"
+        dst = tmp_path / "Foo.lagda.md"
+        src.write_text("Let \\ab{x} be a binding.\n", encoding="utf-8")
+        convert_markdown(src, dst)
+        result = dst.read_text(encoding="utf-8")
+        assert "`x`{.AgdaBound}" in result
+        assert "@@AgdaTerm@@" not in result
 
     def test_no_code_blocks_passthrough(self, tmp_path: Path):
         src = tmp_path / "Foo.lagda"

@@ -105,6 +105,11 @@ Some transformations apply unconditionally; others are gated by opt-in flags.
 +   `\ab{x}` shorthand expansion to `\AgdaBound{x}`.
 +   Custom macros from the supplied `--macros` table.
 
+The Markdown pipeline (`--input-format markdown`) additionally:
+
++   Resolves all custom-macro and `\Agda...` invocations to **kramdown attribute spans** of the form `` `name`{.AgdaClass} ``.  Jekyll's default kramdown processor and most other modern Markdown engines style these via CSS class.  Pair with a `custom.css` providing per-class rules; see the formal-ledger-specifications project for the canonical reference.
++   Rewrites LaTeX `\href{url}{text}` as Markdown `[text](url)`.
+
 **Opt-in transformations** apply only to LaTeX-literate input and only when their flags are passed:
 
 +   `--enable-cross-refs` — Resolves `\label{...}`, `\Cref{...}`, `\cref{...}` against a label map computed from the whole input tree. Loads `lagda_md/filters/cross-refs.lua` as an additional Pandoc filter.
